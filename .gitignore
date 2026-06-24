@@ -1,0 +1,21 @@
+# Ambiente Virtual(Obrigátorio)
+venv/
+.venv/
+env/
+
+# Arquivos de Cache e Bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# Arquivos de Modelos de IA (Pesados)
+*.h5
+*.weights
+*.pt
+*.onnx
+
+# Logs e Dados Temporários
+*.log
+*.txt
+*.json
+.DS_Store
