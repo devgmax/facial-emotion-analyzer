@@ -8,9 +8,45 @@ import time
 mp_face_detection = mp.solutions.face_detection
 face_detection = mp_face_detection.FaceDetection(model_selection=1, min_detection_confidence=0.5)
 
-# --- 2. CLASSE DA IA (O CÉREBRO) ---
+# -- CLASSE DA IA (O CÉREBRO) --
 class FacialAnalyzer:
     def __init__(self):
         self.cap = cv2.VideoCapture(0)
         self.emotion = "Analisando..."
         self.tipo = "Desconhecido"
+    
+    def processar_frame(self, frame):
+        # Converte de BGR (OpenCV) para RGB (MediaPipe)
+        img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = face_detection.process(img_rgb)
+
+        if results.detections:
+            for detection in results.detections:
+                # Desenha a caixa (Bounding Box)
+                bboxC = detection.location_data.relative_bounding_box
+                h, w, c = frame.shape
+                x, y, w_box, h_box = int(bboxC.xmin * w), int(bboxC.ymin * h), \
+                                     int(bboxC.width * w), int(bboxC.height * h)
+                
+                # Desenha o retângulo no rosto
+                cv2.rectangle(frame, (x, y), (x + w_box, y + h_box), (0, 255, 0), 2)
+                
+                # --- LÓGICA DE CLASSIFICAÇÃO (Humano/Animal/Emoção) ---
+                # O MediaPipe detectou um rosto, logo é Humano
+                self.tipo = "Humano"
+                
+                try:
+                    # Recorta o rosto para analisar
+                    rosto_crop = frame[y:y+h_box, x:x+w_box]
+                    # Analisa emoção
+                    analise = DeepFace.analyze(rosto_crop, actions=['emotion'], enforce_detection=False)
+                    self.emotion = analise[0]['dominant_emotion']
+                except:
+                    self.emotion = "Indeterminado"
+        else:
+            self.tipo = "Animal ou Objeto"
+            self.emotion = "---"
+
+        return frame 
+    
+        
