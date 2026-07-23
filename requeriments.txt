@@ -1,0 +1,8 @@
+msvc-runtime
+opencv-python>=4.8.0
+Pillow>=10.0.0
+mediapipe==0.10.14
+tensorflow==2.16.1
+deepface
+tf-keras
+pyinstaller>=6.0.0

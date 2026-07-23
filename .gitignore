@@ -16,6 +16,5 @@ __pycache__/
 
 # Logs e Dados Temporários
 *.log
-*.txt
 *.json
 .DS_Store
