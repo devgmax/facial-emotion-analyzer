@@ -49,4 +49,28 @@ class FacialAnalyzer:
 
         return frame 
     
-        
+    def rodar(self):
+        print("Iniciando sistema... Pressione 'q' para sair.")
+        while True:
+            sucesso, frame = self.cap.read()
+            if not sucesso: break
+
+            frame = cv2.flip(frame, 1)
+            frame = self.processar_frame(frame)
+
+            # Escreve os resultados na tela
+            cv2.putText(frame, f"Tipo: {self.tipo}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
+            cv2.putText(frame, f"Emocao: {self.emotion}", (10, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+            cv2.imshow("Facial Emotion Analyzer - Open Source", frame)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        self.cap.release()
+        cv2.destroyAllWindows()
+
+# --- 3. BLOCO DE EXECUÇÃO ---
+if __name__ == "__main__":
+    analisador = FacialAnalyzer()
+    analisador.rodar()        
