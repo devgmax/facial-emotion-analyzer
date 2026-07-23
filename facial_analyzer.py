@@ -3,6 +3,11 @@
 # MÓDULO: Rastreamento, Classificação e Análise de Expressões em Tempo Real
 # ==============================================================================
 
+import os
+# Oculta avisos informativos e de warning do TensorFlow para manter o console limpo
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+
 import tkinter as tk
 from tkinter import Label, Button, Frame
 import cv2
@@ -21,14 +26,23 @@ class FacialApp:
         """
         # --- Configurações da Janela Principal (Tkinter) ---
         self.root = root
-        self.root.title("Facial Emotion Analyzer - Desktop")
-        self.root.geometry("950x540")
-        self.root.config(bg="#1e1e1e")      # Fundo escuro estilo moderno/Dark Mode
-        self.root.resizable(False, False)   # Impede distorções no layout fixo
+        self.root.title("Facial Emotion Analyzer - Enterprise Edition")
+        self.root.geometry("1000x560")
+        self.root.config(bg="#121212")      # Fundo AMOLED/Pitch Black moderno
+        self.root.resizable(False, False)   # Mantém a integridade do design fixo
+
+        # --- Dicionário de Tradução das Emoções (Inglês -> PT-BR) ---
+        self.tradutor_emocoes = {
+            "angry": "Com Raiva",
+            "disgust": "Nojo",
+            "fear": "Com Medo",
+            "happy": "Feliz",
+            "sad": "Triste",
+            "surprise": "Surpreso(a)",
+            "neutral": "Neutro(a)"
+        }
 
         # --- Inicialização da IA de Detecção Facial (MediaPipe) ---
-        # model_selection=1: Otimizado para rostos localizados a até 5 metros da câmera
-        # min_detection_confidence=0.5: Tolerância mínima de 50% de certeza para validar um rosto
         self.mp_face_detection = mp.solutions.face_detection
         self.face_detection = self.mp_face_detection.FaceDetection(
             model_selection=1, 
@@ -36,154 +50,185 @@ class FacialApp:
         )
 
         # --- Variáveis de Controle de Estado e Dados ---
-        self.is_running = False    # Controla se a captura da webcam está ativa
-        self.cap = None            # Objeto gerenciador da câmera física (OpenCV)
-        self.tipo = "Aguardando..." # Guarda o resultado da classificação (Humano/Animal)
-        self.emotion = "---"        # Guarda a expressão facial identificada pelo DeepFace
+        self.is_running = False    
+        self.cap = None            
+        self.tipo = "Aguardando..." 
+        self.emotion = "---"        
 
-        # --- Construção dos Elementos Visuais ---
+        # --- Construção dos Elementos Visuais Refinados ---
         self.setup_ui()
 
     # ==============================================================================
-    # MÓDULO VISUAL: ESTRUTURAÇÃO DA INTERFACE GRÁFICA (UI)
+    # MÓDULO VISUAL: ESTRUTURAÇÃO DA INTERFACE GRÁFICA PREMIUM (UI)
     # ==============================================================================
     def setup_ui(self):
         """
-        Desenha os painéis laterais, labels de texto e botões de comando do app.
+        Desenha os painéis laterais modernos, tipografia hierárquica e botões interativos.
         """
-        # --- Painel Esquerdo: Tela de Exibição do Vídeo ---
-        self.video_frame = Frame(self.root, bg="#000000", width=640, height=480)
-        self.video_frame.place(x=20, y=30)
+        # --- 1. Painel Esquerdo: Tela de Exibição da Webcam (Estilo Card) ---
+        # Criamos uma borda/moldura sutil em tom grafite ao redor do feed de vídeo
+        self.video_border_frame = Frame(self.root, bg="#1e1e1e", padx=4, pady=4)
+        self.video_border_frame.place(x=25, y=35, width=648, height=488)
+
+        self.video_frame = Frame(self.video_border_frame, bg="#0a0a0a")
+        self.video_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Elemento do Tkinter que receberá as matrizes de imagem convertidas
-        self.label_video = Label(self.video_frame, bg="#000000")
+        # Label placeholder com mensagem elegante enquanto a câmera está desligada
+        self.label_video = Label(
+            self.video_frame, 
+            text="CÂMERA DESCONECTADA\n\nClique em 'Iniciar Fluxo' para ativar a IA",
+            font=("Segoe UI", 11),
+            fg="#666666",
+            bg="#0a0a0a"
+        )
         self.label_video.pack(fill=tk.BOTH, expand=True)
 
-        # --- Painel Direito: Dashboard de Controles e Insights de IA ---
-        self.control_frame = Frame(self.root, bg="#2d2d2d", width=250, height=480)
-        self.control_frame.place(x=680, y=30)
+        # --- 2. Painel Direito: Dashboard Gerencial de Insights ---
+        self.control_frame = Frame(self.root, bg="#1e1e1e")
+        self.control_frame.place(x=695, y=35, width=280, height=488)
 
-        # Título da Seção de Controle
-        title_label = Label(self.control_frame, text="Painel de IA", font=("Arial", 14, "bold"), fg="#ffffff", bg="#2d2d2d")
-        title_label.pack(pady=20)
+        # Título Principal do Painel (Estilo Minimalista)
+        title_label = Label(
+            self.control_frame, 
+            text="Métricas de Visão AI", 
+            font=("Segoe UI", 14, "bold"), 
+            fg="#ffffff", 
+            bg="#1e1e1e"
+        )
+        title_label.pack(pady=(25, 30))
 
-        # Label de Saída: Classificação de Espécie
-        self.lbl_tipo = Label(self.control_frame, text="Tipo: ---", font=("Arial", 11, "bold"), fg="#00ffcc", bg="#2d2d2d")
-        self.lbl_tipo.pack(anchor="w", padx=20, pady=10)
+        # --- Container Interno de Dados (Cards de Telemetria) ---
+        # Card Tipo
+        tipo_card = Frame(self.control_frame, bg="#262626", padx=15, pady=10)
+        tipo_card.pack(fill="x", padx=20, pady=5)
+        
+        lbl_tipo_title = Label(tipo_card, text="CLASSIFICAÇÃO", font=("Segoe UI", 8, "bold"), fg="#888888", bg="#262626")
+        lbl_tipo_title.pack(anchor="w")
+        
+        self.lbl_tipo = Label(tipo_card, text="Aguardando...", font=("Segoe UI", 13, "bold"), fg="#00ffcc", bg="#262626")
+        self.lbl_tipo.pack(anchor="w", pady=(2, 0))
 
-        # Label de Saída: Expressão Facial
-        self.lbl_emocao = Label(self.control_frame, text="Emoção: ---", font=("Arial", 11, "bold"), fg="#ff5555", bg="#2d2d2d")
-        self.lbl_emocao.pack(anchor="w", padx=20, pady=10)
+        # Card Emoção
+        emocao_card = Frame(self.control_frame, bg="#262626", padx=15, pady=10)
+        emocao_card.pack(fill="x", padx=20, pady=10)
+        
+        lbl_emocao_title = Label(emocao_card, text="EXPRESSÃO FACIAL", font=("Segoe UI", 8, "bold"), fg="#888888", bg="#262626")
+        lbl_emocao_title.pack(anchor="w")
+        
+        self.lbl_emocao = Label(emocao_card, text="---", font=("Segoe UI", 14, "bold"), fg="#ff5555", bg="#262626")
+        self.lbl_emocao.pack(anchor="w", pady=(2, 0))
 
-        # --- Botões de Ação ---
-        # Botão Iniciar: Gatilho para capturar fluxo de vídeo
-        self.btn_iniciar = Button(self.control_frame, text="Iniciar Câmera", font=("Arial", 10, "bold"), bg="#4CAF50", fg="white", width=18, command=self.iniciar_camera)
-        self.btn_iniciar.pack(pady=25)
+        # --- 3. Seção Inferior de Controle (Botões Modernizados) ---
+        # Botão Iniciar (Verde Esmeralda)
+        self.btn_iniciar = Button(
+            self.control_frame, text="Iniciar Fluxo", font=("Segoe UI", 10, "bold"), 
+            bg="#10b981", fg="white", activebackground="#059669", activeforeground="white",
+            bd=0, cursor="hand2", width=22, height=2, command=self.iniciar_camera
+        )
+        self.btn_iniciar.pack(pady=(40, 8))
+        self.configurar_hover(self.btn_iniciar, "#10b981", "#059669")
 
-        # Botão Parar: Congela o fluxo de vídeo e desconecta o hardware com segurança
-        self.btn_parar = Button(self.control_frame, text="Parar Câmera", font=("Arial", 10, "bold"), bg="#f44336", fg="white", width=18, command=self.parar_camera)
+        # Botão Parar (Cinza Escuro/Discreto)
+        self.btn_parar = Button(
+            self.control_frame, text="Interromper Câmera", font=("Segoe UI", 10, "bold"), 
+            bg="#374151", fg="#d1d5db", activebackground="#1f2937", activeforeground="white",
+            bd=0, cursor="hand2", width=22, height=2, command=self.parar_camera
+        )
         self.btn_parar.pack(pady=5)
+        self.configurar_hover(self.btn_parar, "#374151", "#1f2937")
 
-        # Botão Sair: Fecha a janela principal do sistema
-        self.btn_sair = Button(self.control_frame, text="Sair do App", font=("Arial", 10, "bold"), bg="#555555", fg="white", width=18, command=self.root.quit)
-        self.btn_sair.pack(pady=35)
+        # Botão Sair (Outline/Vermelho sutil no encerramento)
+        self.btn_sair = Button(
+            self.control_frame, text="Fechar Sistema", font=("Segoe UI", 9, "bold"), 
+            bg="#1e1e1e", fg="#9ca3af", activebackground="#ef4444", activeforeground="white",
+            bd=1, relief="solid", highlightthickness=0, cursor="hand2", width=24, height=2, command=self.root.quit
+        )
+        self.btn_sair.pack(pady=(45, 0))
+        self.configurar_hover(self.btn_sair, "#1e1e1e", "#ef4444", fg_normal="#9ca3af", fg_hover="white")
+
+    # ==============================================================================
+    # HELPER DE DESIGN: EFEITOS DINÂMICOS DE HOVER (INTERATIVIDADE)
+    # ==============================================================================
+    def configurar_hover(self, botao, cor_normal, cor_hover, fg_normal="white", fg_hover="white"):
+        """
+        Adiciona listeners de eventos para mudar a cor dos botões ao passar o rato.
+        """
+        botao.bind("<Enter>", lambda e: botao.config(bg=cor_hover, fg=fg_hover))
+        botao.bind("<Leave>", lambda e: botao.config(bg=cor_normal, fg=fg_normal))
 
     # ==============================================================================
     # MÓDULO DE HARDWARE: GERENCIAMENTO DE ENTRADA DA WEBCAM
     # ==============================================================================
     def iniciar_camera(self):
-        """
-        Conecta com o hardware da câmera padrão e inicia o laço de captura contínua.
-        """
         if not self.is_running:
-            self.cap = cv2.VideoCapture(0)  # Abre o canal da webcam nativa (index 0)
+            self.cap = cv2.VideoCapture(0)  
             self.is_running = True
-            self.atualizar_frame()          # Dispara o gatilho de processamento em tempo real
+            self.label_video.config(text="") # Remove o texto de placeholder
+            self.atualizar_frame()          
 
     def parar_camera(self):
-        """
-        Libera o hardware da câmera física eliminando riscos de deadlocks ou travamento de periféricos.
-        """
         if self.is_running:
             self.is_running = False
             if self.cap:
-                self.cap.release()          # Desconecta o driver da câmera
+                self.cap.release()          
             
-            # Limpa os elementos visuais da tela reiniciando o estado do painel
-            self.label_video.config(image='')
-            self.lbl_tipo.config(text="Tipo: ---")
-            self.lbl_emocao.config(text="Emoção: ---")
+            # Restaura o estado visual padrão de forma limpa
+            self.label_video.config(image='', text="CÂMERA DESCONECTADA\n\nClique em 'Iniciar Fluxo' para ativar a IA")
+            self.lbl_tipo.config(text="Aguardando...")
+            self.lbl_emocao.config(text="---")
 
     # ==============================================================================
     # PIPELINE DE INTELIGÊNCIA ARTIFICIAL: PROCESSAMENTO, VISÃO E DEEP LEARNING
     # ==============================================================================
     def atualizar_frame(self):
-        """
-        Captura o frame atual, roda os modelos de Deep Learning para detecção facial 
-        e classificação de emoções, renderiza os gráficos e atualiza a interface.
-        """
         if self.is_running and self.cap and self.cap.isOpened():
             sucesso, frame = self.cap.read()
             if sucesso:
-                # --- Preparação Inicial da Imagem ---
-                frame = cv2.flip(frame, 1)                      # Espelha o vídeo para experiência natural
-                img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # OpenCV usa BGR; MediaPipe exige RGB
-                
-                # Executa o modelo de localização do MediaPipe
+                frame = cv2.flip(frame, 1)                      
+                img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) 
                 results = self.face_detection.process(img_rgb)
 
-                # --- Fluxo se um Rosto for Detectado ---
                 if results.detections:
                     for detection in results.detections:
-                        # Extrai a caixa de coordenadas relativas (%) geradas pela IA
                         bboxC = detection.location_data.relative_bounding_box
                         h, w, c = frame.shape
                         
-                        # Converte frações percentuais em pixels inteiros absolutos da imagem
                         x, y, w_box, h_box = int(bboxC.xmin * w), int(bboxC.ymin * h), \
                                              int(bboxC.width * w), int(bboxC.height * h)
                         
-                        # Renderiza o retângulo delimitador (Bounding Box) em verde
-                        cv2.rectangle(frame, (x, y), (x + w_box, y + h_box), (0, 255, 0), 2)
-                        self.tipo = "Humano"
+                        # Renderiza o retângulo delimitador com a cor esmeralda do tema (RGB: 16, 185, 129)
+                        cv2.rectangle(frame, (x, y), (x + w_box, y + h_box), (129, 185, 16), 2)
+                        self.tipo = "Humano Mapeado"
                         
-                        # --- Análise de Sentimentos usando Redes Neurais Convolucionais ---
                         try:
-                            # Recorta estritamente a região do rosto para poupar processamento
                             rosto_crop = frame[y:y+h_box, x:x+w_box]
-                            
-                            # Roda o algoritmo DeepFace analisando os pesos de expressões
                             analise = DeepFace.analyze(rosto_crop, actions=['emotion'], enforce_detection=False)
-                            self.emotion = analise[0]['dominant_emotion']
+                            emocao_en = analise[0]['dominant_emotion']
+                            self.emotion = self.tradutor_emocoes.get(emocao_en, "Indeterminado")
                         except:
-                            # Previne crash caso a matriz de corte falhe nas bordas do vídeo
-                            self.emotion = "Indeterminado"
-                
-                # --- Fluxo se nenhum Rosto Humano for Mapeado ---
+                            self.emotion = "Analisando..."
                 else:
                     self.tipo = "Animal ou Objeto"
                     self.emotion = "---"
 
-                # --- Sincronização e Atualização da Interface Gráfica ---
-                self.lbl_tipo.config(text=f"Tipo: {self.tipo}")
-                self.lbl_emocao.config(text=f"Emoção: {self.emotion}")
+                # Sincronização em tempo real das métricas nos Cards
+                self.lbl_tipo.config(text=self.tipo)
+                self.lbl_emocao.config(text=self.emotion)
 
-                # Converte a matriz de cores do OpenCV para objetos compatíveis com a engine do Tkinter
+                # Conversão matricial otimizada para o ecossistema Tkinter
                 img_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
                 img_pil = img_pil.resize((640, 480))
                 img_tk = ImageTk.PhotoImage(image=img_pil)
 
-                # Aloca os dados em memória RAM para exibição fluida
                 self.label_video.imgtk = img_tk
                 self.label_video.config(image=img_tk)
 
-            # Agenda recursivamente a execução do método daqui a 15 milissegundos (~60 FPS teóricos)
             self.root.after(15, self.atualizar_frame)
 
 # ==============================================================================
 # BLOCO DE EXECUÇÃO DO APLICATIVO
 # ==============================================================================
 if __name__ == "__main__":
-    root = tk.Tk()             # Instancia o motor de janelas do sistema operacional
-    app = FacialApp(root)       # Constrói o aplicativo de IA
-    root.mainloop()            # Mantém o processo em execução escutando eventos do usuário
+    root = tk.Tk()             
+    app = FacialApp(root)       
+    root.mainloop()
